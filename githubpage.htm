@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Patras Weather</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+     <style>
+     #map { height: 650px; }
+     </style>
+</head>
+
+
+<body>
+    <h1>Patras Weather</h1>
+    <div>
+        <h3>Temperature</h3>
+        <div id="tempChart"></div>
+        <h3>Humidity</h3>
+        <div id="humChart"></div>
+        <h3>PM2.5</h3>
+        <div id="pm25Chart"></div>
+        <script>
+            let tempData = [0,0,0,0,0];
+            let humData = [0,0,0,0,0];
+            let pm25Data = [0,0,0,0,0];
+            let latData = [0,0,0,0,0];
+            let lonData = [0,0,0,0,0];
+            let labelData = ["","","","",""];
+              
+              var tempChart = new ApexCharts(document.querySelector("#tempChart"), {
+                chart: {
+                  type: 'bar',
+                  width: '50%'
+                },
+                series: [{
+                  name: 'temps',
+                  data: tempData
+                }],
+                xaxis: {
+                  categories: ['Lefka','Paralia','University of Patras','Kastelokampos','Demenika']
+                },
+                fill: {
+                  colors: ['#ff00ff']
+                },
+                
+              });
+              tempChart.render();
+            
+              var humChart = new ApexCharts(document.querySelector("#humChart"), {
+                chart: {
+                  type: 'bar',
+                  width: '50%'
+                },
+                series: [{
+                  name: 'hum',
+                  data: humData
+                }],
+                xaxis: {
+                  categories: ['Lefka','Paralia','University of Patras','Kastelokampos','Demenika']
+                },
+                fill: {
+                  colors: ['#ff00ff']
+                },
+                
+              });
+              humChart.render();
+            
+              var pm25Chart = new ApexCharts(document.querySelector("#pm25Chart"), {
+                chart: {
+                  type: 'bar',
+                  width: '50%'
+                },
+                series: [{
+                  name: 'pm25',
+                  data: pm25Data
+                }],
+                xaxis: {
+                  categories: ['Lefka','Paralia','University of Patras','Kastelokampos','Demenika']
+                },
+                fill: {
+                  colors: ['#ff00ff']
+                },
+                
+              });
+              pm25Chart.render();
+            
+            
+            
+            
+              // const sensors = {
+              //   101589: 'Lefka',
+              //   101609: 'Paralia',
+              //   1566: 'University of Patras',
+              //   1672: 'Kastelokampos',
+            
+              //   14857: 'Demenika'
+              // };
+            
+              const sensors = ['101589','101609','1566','1672','14857'];
+            
+              function delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+              }
+            
+              async function getSensorData() {
+                
+                for (let i = 0; i<sensors.length;i++) {
+                  const sensorid = sensors[i];
+                  await delay(i * 450);
+            
+                  $.ajax({
+            
+                    url: `http://labserver.sense-campus.gr:5047/exmi_patras?token=studentpassword&sensorid=${sensorid}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(data) {
+                      console.log(data);
+                      tempData[i] = data.temp;
+                      humData[i] = data.hum;
+                      pm25Data[i] = data.pm25;
+                      latData[i] = parseFloat(data.lat);
+                      lonData[i] = parseFloat(data.lon);
+                      labelData[i] = data.label;
+            
+                      tempChart.updateSeries([{ data: tempData }]);
+                      humChart.updateSeries([{ data: humData }]);
+                      pm25Chart.updateSeries([{ data: pm25Data }]);
+                    },
+                    error: function(xhr, status, err) {
+                      console.error(`Error loading sensor ${sensorid}:`, err);
+                    }
+                  });
+            
+                  
+                }
+              }
+              
+            </script>
+
+
+        <div>
+            <div id="map"></div>
+        </div>
+        <script>  
+            var map = L.map('map').setView([38.2333918, 21.7280606], 12);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
+            async function updateMap() {
+                
+                for (let i = 0; i<sensors.length;i++) {
+                const sensorid = sensors[i];
+                await delay(i * 450);
+                L.marker([latData[i],lonData[i]]).addTo(map).bindPopup(`${labelData[i]}<br>Temperature: ${tempData[i]}<br>Humidity: ${humData[i]}<br>PM2.5: ${pm25Data[i]}`);}
+            }
+        </script>
+
+    </div>
+    
+
+</body>
+
+
+<script>
+    async function loop() {
+    while (true) {
+      await getSensorData();
+      await updateMap();
+    //   await delay(100000); 
+    }
+  }
+  loop()</script>
+
+</html>
